@@ -131,9 +131,9 @@ def gen_PyFleX(info):
 
     # positions, velocities
     if env_idx == 5:    # RiceGrip
-        stats = [init_stat(6), init_stat(6)]
+        stats = [init_stat(6), init_stat(6)]  # shape=(2, 6, 3)
     else:
-        stats = [init_stat(3), init_stat(3)]
+        stats = [init_stat(3), init_stat(3)]  # shape=(2, 3, 3)
 
     import pyflex
     pyflex.init()
@@ -149,10 +149,16 @@ def gen_PyFleX(info):
 
         if env == 'FluidFall':
             scene_params = np.zeros(1)
-            pyflex.set_scene(env_idx, scene_params, thread_idx)
-            n_particles = pyflex.get_n_particles()
+            pyflex.set_scene(env_idx, scene_params, thread_idx)  # 여기서 sticky rice의 위치를 무작위로 생성
+            n_particles = pyflex.get_n_particles()  # 2개 sticky rice의 파티클 개수
             positions = np.zeros((time_step, n_particles, 3), dtype=np.float32)
             velocities = np.zeros((time_step, n_particles, 3), dtype=np.float32)
+
+            # args.n_instance = 1
+            # phases_dict["instance_idx"] = [0, 189]
+            #
+            # yz_ricefall.h에서 첫 번째 sticky rice가 두 번째 sticky rice보다 낮은 위치에 생성됨
+            # 첫 번째 sticky rice가 [0~188], 두 번째 sticky rice가 [189~n_particles]일 것 같음
 
             for j in range(time_step_clip):
                 p_clip = pyflex.get_positions().reshape(-1, 4)[:, :3]
@@ -168,15 +174,16 @@ def gen_PyFleX(info):
 
                 pyflex.step()
 
-                data = [positions[j], velocities[j]]
+                data = [positions[j], velocities[j]]  # 저장하는 정보는 sticky rice의 particle position & velocity
                 store_data(data_names, data, os.path.join(rollout_dir, str(j) + '.h5'))
 
         elif env == 'BoxBath':
             # BoxBath
 
             scene_params = np.zeros(1)
-            pyflex.set_scene(env_idx, scene_params, thread_idx)
-            n_particles = pyflex.get_n_particles()
+            # env_idx = 1
+            pyflex.set_scene(env_idx, scene_params, thread_idx)  # 여기서 cube의 위치를 무작위로 생성
+            n_particles = pyflex.get_n_particles()  # 큐브 + 물 파티클 개수 = 1024, 앞의 64개 파티클은 큐브 파티클
             positions = np.zeros((time_step, n_particles, 3), dtype=np.float32)
             velocities = np.zeros((time_step, n_particles, 3), dtype=np.float32)
 
@@ -186,9 +193,10 @@ def gen_PyFleX(info):
             p = pyflex.get_positions().reshape(-1, 4)[:64, :3]
             clusters = []
             st_time = time.time()
-            kmeans = MiniBatchKMeans(n_clusters=root_num[0][0], random_state=0).fit(p)
+            # phases_dict["root_num"] = [[8], []]
+            kmeans = MiniBatchKMeans(n_clusters=root_num[0][0], random_state=0).fit(p)  # 큐브의 64개 particles를 8개로 클러스터링
             # print('Time on kmeans', time.time() - st_time)
-            clusters.append([[kmeans.labels_]])
+            clusters.append([[kmeans.labels_]])  # 각 파티클별 클러스터 그룹 정보
             # centers = kmeans.cluster_centers_
 
             ref_rigid = p
@@ -201,6 +209,8 @@ def gen_PyFleX(info):
                 YY = positions[j, :64]
                 # print("MSE init", np.mean(np.square(XX - YY)))
 
+                # Rigid body를 구성하는 particles 사이 거리가 흐뜨러져서
+                # fitting으로 강제로 맞춰주는 건가?
                 X = XX.copy().T
                 Y = YY.copy().T
                 mean_X = np.mean(X, 1, keepdims=True)
@@ -238,6 +248,8 @@ def gen_PyFleX(info):
             x = x_center - (dim_x-1)/2.*0.055
             y = 0.055/2. + border + 0.01
             z = 0. - (dim_z-1)/2.*0.055
+
+            # scene_params로 넘겨주지만 yz_fluidshake.h에서 사용 안 함
             box_dis_x = dim_x * 0.055 + rand_float(0., 0.3)
             box_dis_z = 0.2
 
@@ -374,8 +386,9 @@ def gen_PyFleX(info):
         # only normalize positions and velocities
         datas = [positions.astype(np.float64), velocities.astype(np.float64)]
 
-        for j in range(len(stats)):
-            stat = init_stat(stats[j].shape[0])
+        # stats.shape == (2, 3, 3) or (2, 6, 3)
+        for j in range(len(stats)):  # len(stats) == 2
+            stat = init_stat(stats[j].shape[0])  # stat.shape == (3, 3) or (6, 3)
             stat[:, 0] = np.mean(datas[j], axis=(0, 1))[:]
             stat[:, 1] = np.std(datas[j], axis=(0, 1))[:]
             stat[:, 2] = datas[j].shape[0] * datas[j].shape[1]
@@ -404,6 +417,7 @@ def find_relations_neighbor(positions, query_idx, anchor_idx, radius, order, var
 
     pos = positions.data.cpu().numpy() if var else positions
 
+    # Find all points within distance r of point(s) x
     point_tree = spatial.cKDTree(pos[anchor_idx])
     neighbors = point_tree.query_ball_point(pos[query_idx], radius, p=order)
 
@@ -575,10 +589,10 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
         n_shapes = shape_quats.size(0) if var else shape_quats.shape[0]
         clusters = None
     elif args.env == 'BoxBath':
-        positions, velocities, clusters = data
+        positions, velocities, clusters = data  # Cube + water의 particles
         n_shapes = 0
     elif args.env == 'FluidFall':
-        positions, velocities = data
+        positions, velocities = data  # 2개 sticky rice의 particles
         n_shapes = 0
         clusters = None
 
@@ -688,6 +702,10 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
             if phases_dict['material'][i] == 'rigid':
                 attr[st:ed, 0] = 1
                 queries = np.arange(st, ed)
+                # ridig body [st~ed]
+                # fluid [0~st] + [ed~n_particles]
+                # 즉, rigid body > fluid 사이 mapping만 고려
+                # rigid body 내부적인 mapping은 제외
                 anchors = np.concatenate((np.arange(st), np.arange(ed, n_particles)))
             elif phases_dict['material'][i] == 'fluid':
                 attr[st:ed, 1] = 1
@@ -709,7 +727,10 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
 
         # st_time = time.time()
         pos = positions
-        pos = pos[:, -3:]
+        pos = pos[:, -3:]  # 어차피 xyz만 저장하는데 의미가 없는 코드?
+
+        # 일정 거리 내에 있는 rigid body > fluid 관계
+        # 혹은 일정 거리 내에 있는 fluid > 다른 모든 물체 관계를 나타냄
         rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
         # print("Time on neighbor search", time.time() - st_time)
 
@@ -718,17 +739,20 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
         print("Object attr:", np.sum(attr, axis=0))
 
     rels = np.concatenate(rels, 0)
+
     if rels.shape[0] > 0:
         if verbose:
             print("Relations neighbor", rels.shape)
-        Rr_idxs.append(torch.LongTensor([rels[:, 0], np.arange(rels.shape[0])]))
-        Rs_idxs.append(torch.LongTensor([rels[:, 1], np.arange(rels.shape[0])]))
-        Ra = np.zeros((rels.shape[0], args.relation_dim))
+        # rels.shape[0] == number of relations
+        Rr_idxs.append(torch.LongTensor([rels[:, 0], np.arange(rels.shape[0])]))  # Relation receiver indices
+        Rs_idxs.append(torch.LongTensor([rels[:, 1], np.arange(rels.shape[0])]))  # Relation sender indices
+        Ra = np.zeros((rels.shape[0], args.relation_dim))  # args.relation_dim == 1
         Ras.append(torch.FloatTensor(Ra))
         values.append(torch.FloatTensor([1] * rels.shape[0]))
         node_r_idxs.append(np.arange(n_particles))
         node_s_idxs.append(np.arange(n_particles + n_shapes))
         psteps.append(args.pstep)
+
 
     if verbose:
         print('clusters', clusters)
@@ -737,6 +761,8 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
     cnt_clusters = 0
     for i in range(len(instance_idx) - 1):
         st, ed = instance_idx[i], instance_idx[i + 1]
+
+        # 8 for BoxBath cube, 30 for RiceGrip sticky rice, 0 for else
         n_root_level = len(phases_dict["root_num"][i])
 
         if n_root_level > 0:
@@ -817,6 +843,16 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
 
     attr = torch.FloatTensor(attr)
     relations = [Rr_idxs, Rs_idxs, values, Ras, node_r_idxs, node_s_idxs, psteps]
+
+    # print('state', state.shape)
+    # print('attr', attr.shape)
+    # print('rel recv', len(Rr_idxs), Rr_idxs[0].shape, Rr_idxs[1].shape, Rr_idxs[2].shape, Rr_idxs[3].shape)
+    # print('rel send', len(Rs_idxs))
+    # print('rel val', len(values))
+    # print('rel attr', len(Ras))
+    # print('node recv', len(node_r_idxs))
+    # print('node send', len(node_s_idxs))
+    # print('pstep', psteps)
 
     return attr, state, relations, n_particles, n_shapes, instance_idx
 
@@ -922,6 +958,9 @@ class PhysicsFleXDataset(Dataset):
         data_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep) + '.h5')
         data_nxt_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep + 1) + '.h5')
 
+        print('rollout, time_step', idx_rollout, idx_timestep)
+        print('data path', data_path)
+
         data = load_data(self.data_names, data_path)
 
         vel_his = []
@@ -933,7 +972,7 @@ class PhysicsFleXDataset(Dataset):
         data[1] = np.concatenate([data[1]] + vel_his, 1)
 
         attr, state, relations, n_particles, n_shapes, instance_idx = \
-                prepare_input(data, self.stat, self.args, self.phases_dict, self.verbose)
+                prepare_input(data, self.stat, self.args, self.phases_dict, False)  # self.verbose)
 
         ### label
         data_nxt = normalize(load_data(self.data_names, data_nxt_path), self.stat)

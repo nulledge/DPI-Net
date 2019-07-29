@@ -5,3 +5,5 @@ dump_*/
 .idea
 *.swp
 *.swo
+data/
+scripts/
