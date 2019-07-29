@@ -242,7 +242,7 @@ datasets = {phase: PhysicsFleXDataset(
 
 datasets['train'].load_data(args.env)
 
-attr, state, rels, n_particles, n_shapes, instance_idx, label = datasets['train'][325]
+attr, state, rels, n_particles, n_shapes, instance_idx, label = datasets['train'][0]
 Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
 
 Rr, Rs = [], []
@@ -275,38 +275,62 @@ print(rels[0][0].dtype, rels_copy[0][0].dtype)
 print('len(rels)', len(rels), len(rels_copy))
 print('\trel recv',
         (rels[0][0] == rels_copy[0][0]).all(),
-        (rels[0][1] == rels_copy[0][1]).all(),
-        (rels[0][2] == rels_copy[0][2]).all(),
-        (rels[0][3] == rels_copy[0][3]).all(),
+        # (rels[0][1] == rels_copy[0][1]).all(),
+        # (rels[0][2] == rels_copy[0][2]).all(),
+        # (rels[0][3] == rels_copy[0][3]).all(),
       )
 print('\trel send',
         (rels[1][0] == rels_copy[1][0]).all(),
-        (rels[1][1] == rels_copy[1][1]).all(),
-        (rels[1][2] == rels_copy[1][2]).all(),
-        (rels[1][3] == rels_copy[1][3]).all(),
+        # (rels[1][1] == rels_copy[1][1]).all(),
+        # (rels[1][2] == rels_copy[1][2]).all(),
+        # (rels[1][3] == rels_copy[1][3]).all(),
       )
-print('\trel values',
+print('\tmean diff(rel values)',
         torch.mean(rels[2][0] - rels_copy[2][0]),
-        torch.mean(rels[2][1] - rels_copy[2][1]),
-        torch.mean(rels[2][2] - rels_copy[2][2]),
-        torch.mean(rels[2][3] - rels_copy[2][3]),
+        # torch.mean(rels[2][1] - rels_copy[2][1]),
+        # torch.mean(rels[2][2] - rels_copy[2][2]),
+        # torch.mean(rels[2][3] - rels_copy[2][3]),
       )
-print('\trel attrs',
+print('\tmean diff(rel attrs)',
         torch.mean(rels[3][0] - rels_copy[3][0]),
-        torch.mean(rels[3][1] - rels_copy[3][1]),
-        torch.mean(rels[3][2] - rels_copy[3][2]),
-        torch.mean(rels[3][3] - rels_copy[3][3]),
+        # torch.mean(rels[3][1] - rels_copy[3][1]),
+        # torch.mean(rels[3][2] - rels_copy[3][2]),
+        # torch.mean(rels[3][3] - rels_copy[3][3]),
       )
 print('\trel recv',
         (rels[4][0] == rels_copy[4][0]).all(),
-        (rels[4][1] == rels_copy[4][1]).all(),
-        (rels[4][2] == rels_copy[4][2]).all(),
-        (rels[4][3] == rels_copy[4][3]).all(),
+        # (rels[4][1] == rels_copy[4][1]).all(),
+        # (rels[4][2] == rels_copy[4][2]).all(),
+        # (rels[4][3] == rels_copy[4][3]).all(),
       )
 print('\trel send',
         (rels[5][0] == rels_copy[5][0]).all(),
-        (rels[5][1] == rels_copy[5][1]).all(),
-        (rels[5][2] == rels_copy[5][2]).all(),
-        (rels[5][3] == rels_copy[5][3]).all(),
+        # (rels[5][1] == rels_copy[5][1]).all(),
+        # (rels[5][2] == rels_copy[5][2]).all(),
+        # (rels[5][3] == rels_copy[5][3]).all(),
       )
 print('\tpsteps', rels[6], rels_copy[6])
+
+
+############################################
+# FluidFall comparison
+############################################
+
+# mean diff(attr) tensor(0.) torch.Size([189, 1]) torch.Size([189, 1])
+# mean diff(state) tensor(0.) torch.Size([189, 6]) torch.Size([189, 6])
+# 	mean diff(pos) tensor(0.)
+# 	mean diff(vel) tensor(0.)
+# diff(n_particles) 0
+# diff(n_shapes) 0
+# instance idx [0, 189] [0, 189]
+# mean diff(label) tensor(0.) torch.Size([189, 3]) torch.Size([189, 3])
+#
+# torch.int64 torch.int64
+# len(rels) 7 7
+# 	rel recv tensor(1, dtype=torch.uint8)
+# 	rel send tensor(1, dtype=torch.uint8)
+# 	mean diff(rel values) tensor(0.)
+# 	mean diff(rel attrs) tensor(0.)
+# 	rel recv True
+# 	rel send True
+# 	psteps [2] [2]

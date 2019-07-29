@@ -323,7 +323,7 @@ def generate(descriptor):
     return stats
 
 
-config = configs['BoxBath']
+config = configs['FluidFall']
 data = None
 
 config.n_rollout = 200
@@ -397,12 +397,12 @@ class PyFlexDataset(Dataset):
         assert (self.config.n_rollout * self.config.train_ratio / self.config.num_workers).is_integer()
         assert (self.config.n_rollout * self.config.valid_ratio / self.config.num_workers).is_integer()
 
-        if self.config.gen_data:
-            self._generate()
-        self.stats = np.load(os.path.join(self.config.outf, 'train', 'stat.npy'))
-        # hf = h5py.File('data/data_BoxBath/stat.h5', 'r')
-        # self.stats = [np.array(hf.get('positions')), np.array(hf.get('velocities'))]
-        # hf.close()
+        # if self.config.gen_data:
+        #     self._generate()
+        # self.stats = np.load(os.path.join(self.config.outf, 'train', 'stat.npy'))
+        hf = h5py.File('data/data_FluidFall/stat.h5', 'r')
+        self.stats = [np.array(hf.get('positions')), np.array(hf.get('velocities'))]
+        hf.close()
 
     def __len__(self):
         length = self.config.n_rollout \
@@ -418,18 +418,18 @@ class PyFlexDataset(Dataset):
         rollout = idx // (self.config.time_step - 1)
         time_step = idx % (self.config.time_step - 1) - 1
 
-        # data_path = 'data/data_BoxBath/train/2/25.h5'
-        # hf = h5py.File(data_path, 'r')
-        # data = [np.array(hf.get('positions')), np.array(hf.get('velocities')), np.array(hf.get('clusters'))]
-        # hf.close()
-        #
+        data_path = 'data/data_FluidFall/train/0/0.h5'
+        hf = h5py.File(data_path, 'r')
+        data = [np.array(hf.get('positions')), np.array(hf.get('velocities'))]  # , np.array(hf.get('clusters'))]
+        hf.close()
+
         # data[2] = data[2][0][0]
 
-        data = np.load(os.path.join(
-            self.config.outf,
-            'eval' if config.eval else 'train',
-            str(rollout),
-            '{time_step}.npy'.format(time_step=time_step)), allow_pickle=True)
+        # data = np.load(os.path.join(
+        #     self.config.outf,
+        #     'eval' if config.eval else 'train',
+        #     str(rollout),
+        #     '{time_step}.npy'.format(time_step=time_step)), allow_pickle=True)
 
         data[1] = [data[1]]
 
@@ -443,16 +443,16 @@ class PyFlexDataset(Dataset):
 
         attr, state, relations, n_particles, n_shapes, instance_idx = self._preprocess(data)
 
-        label_data = np.load(os.path.join(
-            self.config.outf,
-            'eval' if config.eval else 'train',
-            str(rollout),
-            '{time_step}.npy'.format(time_step=time_step + 1)), allow_pickle=True)
+        # label_data = np.load(os.path.join(
+        #     self.config.outf,
+        #     'eval' if config.eval else 'train',
+        #     str(rollout),
+        #     '{time_step}.npy'.format(time_step=time_step + 1)), allow_pickle=True)
 
-        # data_path = 'data/data_BoxBath/train/2/26.h5'
-        # hf = h5py.File(data_path, 'r')
-        # label_data = [np.array(hf.get('positions')), np.array(hf.get('velocities')), np.array(hf.get('clusters'))]
-        # hf.close()
+        data_path = 'data/data_FluidFall/train/0/1.h5'
+        hf = h5py.File(data_path, 'r')
+        label_data = [np.array(hf.get('positions')), np.array(hf.get('velocities')), np.array(hf.get('clusters'))]
+        hf.close()
 
         data_nxt = self._normalize(label_data)
 
@@ -726,7 +726,7 @@ dataset = PyFlexDataset(config)
 attr, state, rels, n_particles, n_shapes, instance_idx, label = dataset[315]
 Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
 
-relation_type = 3
+relation_type = 0
 print(len(node_r_idx), node_r_idx[relation_type].shape, Ra[relation_type].size(0))
 
 Rr, Rs = [], []
