@@ -500,7 +500,7 @@ class PyFlexDataset(Dataset):
                     raise Exception('Not implemented', mat)
             elif self.config.env == 'FluidFall':
                 if mat == 'fluid':
-                    particle_attr[st:ed, 1] = 0
+                    particle_attr[st:ed, 0] = 1
                     queries = np.arange(st, ed)
                     anchors = np.arange(0, n_particle)
                 else:
@@ -578,12 +578,12 @@ class PyFlexDataset(Dataset):
     def _normalize(self, data):
         stat = self.stats.copy()
         for i in range(len(stat)):
-            stat[i][stat[i][:, 1] == 0, 1] = 1.
+            stat[i][stat[i][:, 1] == 0, 1] = 1.  # if stddev is 0, then set to 1
 
-            stat_dim = stat[i].shape[0]
-            n_rep = int(data[i].shape[1] / stat_dim)
+            stat_dim = stat[i].shape[0]  # position_dim
+            n_rep = int(data[i].shape[1] / stat_dim)  # velocity is repeated n_his times
             data[i] = data[i].reshape((-1, n_rep, stat_dim))
-            data[i] = (data[i] - stat[i][:, 0]) / stat[i][:, 1]
+            data[i] = (data[i] - stat[i][:, 0]) / stat[i][:, 1]  # normalize
             data[i] = data[i].reshape((-1, n_rep * stat_dim))
         return data
 
