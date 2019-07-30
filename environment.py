@@ -13,7 +13,7 @@ class Config(object):
         'nf_effect',            # number of features for propagation effect
 
         'train_ratio',          #
-        'valid_ratio',          #
+        'eval_ratio',           #
         'outf',                 #
         'dataf',                #
         'num_workers',          # number of processes to generate data
@@ -67,7 +67,7 @@ class Config(object):
             nf_effect           = 200,
 
             train_ratio         = 0.9,
-            valid_ratio         = 0.1,
+            eval_ratio          = 0.1,
             outf                = 'files',
             dataf               = 'data',
             num_workers         = 10,
@@ -118,7 +118,7 @@ class Config(object):
         self.nf_effect = nf_effect
 
         self.train_ratio = train_ratio
-        self.valid_ratio = valid_ratio
+        self.eval_ratio = eval_ratio
         self.outf = outf
         self.dataf = dataf
         self.num_workers = num_workers
@@ -191,22 +191,46 @@ configs = {
         material = ['rigid', 'fluid', ],
         outf = 'test_BoxBath',
     ),
-    'LiquidFun' : Config(
+    'LiquidFun_train' : Config(
         env = 'LiquidFun',
-        n_rollout = 3,
+        n_rollout = 3000,
+        batch_size = 1,
+        n_epoch = 5,
         gen_data = False,  # generate mean and stddev
-        verbose_data = True,
-        train_ratio = 1.0, valid_ratio = 0.0,
+        verbose_data = False,
+        verbose_model = False,
+        train_ratio = 0.9, eval_ratio = 0.1,
         num_workers = 1,
         state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
         attr_dim = 1,
         relation_dim = 1,
-        time_step = 151, time_step_clip = 0,
+        time_step = 150, time_step_clip = 0,
         n_instance = 1, n_stages = 1,
-        neighbor_radius = 0.08,
+        neighbor_radius = 0.08 / 0.05 * 0.025,
         instance = [0, ],
         root_num = [None, ],
         material = ['fluid', ],
         outf = os.path.join('data', 'test_LiquidFun')
-    )
+    ),
+    'LiquidFun_eval' : Config(
+        env = 'LiquidFun',
+        n_rollout = 3000,
+        batch_size = 1,
+        eval = True, # evaluation on
+        gen_data = False,  # generate mean and stddev
+        verbose_data = False,
+        verbose_model = False,
+        train_ratio = 0.9, eval_ratio = 0.1,
+        num_workers = 1,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 1,
+        relation_dim = 1,
+        time_step = 150, time_step_clip = 0,
+        n_instance = 1, n_stages = 1,
+        neighbor_radius = 0.08 / 0.05 * 0.025,
+        instance = [0, ],
+        root_num = [None, ],
+        material = ['fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun')
+    ),
 }

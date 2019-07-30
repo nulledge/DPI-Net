@@ -190,7 +190,7 @@ class DPINet(nn.Module):
         return rot
 
     def forward(self, attr, state, Rr, Rs, Ra, n_particles, node_r_idx, node_s_idx, pstep,
-                instance_idx, phases_dict, verbose=0):
+                instance_idx, material, verbose=0):
 
         # calculate particle encoding
         if self.use_gpu:
@@ -206,7 +206,7 @@ class DPINet(nn.Module):
 
         for i in range(len(instance_idx) - 1):
             st, ed = instance_idx[i], instance_idx[i + 1]
-            if phases_dict['material'][i] == 'rigid':
+            if material[i] == 'rigid':
                 c = torch.mean(state[st:ed], dim=0)
                 offset[st:ed] = state[st:ed] - c
         attr = torch.cat([attr, offset], 1)
@@ -276,7 +276,7 @@ class DPINet(nn.Module):
         for i in range(len(instance_idx) - 1):
             st, ed = instance_idx[i], instance_idx[i + 1]
 
-            if phases_dict['material'][i] == 'rigid':
+            if material[i] == 'rigid':
                 t = self.rigid_particle_predictor(torch.mean(particle_effect[st:ed], 0)).view(-1)
 
                 R = self.rotation_matrix_from_quaternion(t[:4])
@@ -288,7 +288,7 @@ class DPINet(nn.Module):
                 v = (p_1 - p_0) / self.dt
                 pred.append((v - self.mean_v) / self.std_v)
 
-            elif phases_dict['material'][i] == 'fluid':
+            elif material[i] == 'fluid':
                 pred.append(self.fluid_particle_predictor(particle_effect[st:ed]))
 
         pred = torch.cat(pred, 0)

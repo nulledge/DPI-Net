@@ -21,9 +21,9 @@ class LiquidFunDataset(Dataset):
     def __init__(self, config):
         self.config = config
 
-        assert self.config.train_ratio + self.config.valid_ratio == 1.0
-        assert (self.config.n_rollout * self.config.train_ratio / self.config.num_workers).is_integer()
-        assert (self.config.n_rollout * self.config.valid_ratio / self.config.num_workers).is_integer()
+        assert self.config.train_ratio + self.config.eval_ratio== 1.0
+        assert (self.config.n_rollout * self.config.eval_ratio / self.config.num_workers).is_integer()
+        assert (self.config.n_rollout * self.config.eval_ratio / self.config.num_workers).is_integer()
 
         if self.config.gen_data:
             self._generate()
@@ -31,7 +31,7 @@ class LiquidFunDataset(Dataset):
 
     def __len__(self):
         length = self.config.n_rollout \
-            * (self.config.valid_ratio if self.config.eval else self.config.train_ratio) \
+            * (self.config.eval_ratio if self.config.eval else self.config.train_ratio) \
             * (self.config.time_step - 1)  # last time step should have the supervised data
 
         assert length.is_integer()
@@ -167,7 +167,7 @@ class LiquidFunDataset(Dataset):
                     psteps.append(new_psteps[relation_type])
 
         ### normalize data
-        data = [node_pos.copy(), node_vel.copy()]
+        data = [node_pos, node_vel]
         node_pos, node_vel = self._normalize(data)
 
         state = torch.tensor(np.concatenate([node_pos, node_vel], axis=1)).float()
@@ -188,7 +188,7 @@ class LiquidFunDataset(Dataset):
 
 
     def _normalize(self, data):
-        stat = self.stats.copy()
+        stat = self.stats
         for i in range(len(stat)):
             stat[i][stat[i][:, 1] == 0, 1] = 1.  # if stddev is 0, then set to 1
 
@@ -318,8 +318,10 @@ class LiquidFunDataset(Dataset):
             np.zeros(shape=(self.config.position_dim, 3)),  # mean, stddev, number of particles for position
             np.zeros(shape=(self.config.position_dim, 3)),  # mean, stddev, number of particles for velocity
         ]
-        for rollout in tqdm(range(self.config.n_rollout)):
-            n_particle = 2279
+        n_rollout = self.config.n_rollout * (self.config.eval_ratio if self.config.eval else self.config.train_ratio)
+        assert n_rollout.is_integer()
+        for rollout in tqdm(range(int(n_rollout))):
+            n_particle = 1024
             pos = np.zeros(shape=(self.config.time_step, n_particle, self.config.position_dim))
             vel = np.zeros(shape=(self.config.time_step, n_particle, self.config.position_dim))
             for time_step in range(self.config.time_step):
