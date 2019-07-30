@@ -39,9 +39,8 @@ class LiquidFunDataset(Dataset):
         return int(length)
 
     def __getitem__(self, idx):
-        # time step is 1-based
         rollout = idx // (self.config.time_step - 1) + 1
-        time_step = idx % (self.config.time_step - 1) + 1
+        time_step = idx % (self.config.time_step - 1)
 
         data_path = os.path.join(
             self.config.outf,
@@ -329,7 +328,7 @@ class LiquidFunDataset(Dataset):
                     self.config.outf,
                     'eval' if self.config.eval else 'train',
                     str(rollout + 1),
-                    '{time_step}.txt'.format(time_step=time_step + 1)
+                    '{time_step}.txt'.format(time_step=time_step)
                 )
                 data = np.loadtxt(data_path)
                 pos[time_step, :, :] = data[:, :self.config.position_dim]
