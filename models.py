@@ -123,17 +123,22 @@ class DPINet(nn.Module):
         if use_gpu:
             self.pi = Variable(torch.FloatTensor([np.pi])).cuda()
             self.dt = Variable(torch.FloatTensor([args.dt])).cuda()
+
             self.mean_v = Variable(torch.FloatTensor(stat[1][:, 0])).cuda()
             self.std_v = Variable(torch.FloatTensor(stat[1][:, 1])).cuda()
-            self.mean_p = Variable(torch.FloatTensor(stat[0][:3, 0])).cuda()
-            self.std_p = Variable(torch.FloatTensor(stat[0][:3, 1])).cuda()
+            self.mean_p = Variable(torch.FloatTensor(stat[0][:, 0])).cuda()
+            self.std_p = Variable(torch.FloatTensor(stat[0][:, 1])).cuda()
+            # self.mean_v = Variable(torch.FloatTensor(np.concatenate([stat[1][:, 0], [0.]], axis=0))).cuda()
+            # self.std_v = Variable(torch.FloatTensor(np.concatenate([stat[1][:, 1], [1.]], axis=0))).cuda()
+            # self.mean_p = Variable(torch.FloatTensor(np.concatenate([stat[0][:, 0], [0.]], axis=0))).cuda()
+            # self.std_p = Variable(torch.FloatTensor(np.concatenate([stat[0][:, 1], [1.]], axis=0))).cuda()
         else:
             self.pi = Variable(torch.FloatTensor([np.pi]))
             self.dt = Variable(torch.FloatTensor(args.dt))
             self.mean_v = Variable(torch.FloatTensor(stat[1][:, 0]))
             self.std_v = Variable(torch.FloatTensor(stat[1][:, 1]))
-            self.mean_p = Variable(torch.FloatTensor(stat[0][:3, 0]))
-            self.std_p = Variable(torch.FloatTensor(stat[0][:3, 1]))
+            self.mean_p = Variable(torch.FloatTensor(stat[0][:, 0]))
+            self.std_p = Variable(torch.FloatTensor(stat[0][:, 1]))
 
         # (1) particle attr (2) state
         self.particle_encoder_list = nn.ModuleList()
@@ -160,8 +165,40 @@ class DPINet(nn.Module):
             self.particle_propagator_list.append(Propagator(2 * nf_effect, nf_effect, self.residual))
 
         # (1) set particle effect
-        self.rigid_particle_predictor = ParticlePredictor(nf_effect, nf_effect, 7)  # predict rigid motion
+        self.rigid_particle_predictor = ParticlePredictor(nf_effect, nf_effect, 3 if args.env == 'LiquidFun_Rigid' else 7)  # predict rigid motion
         self.fluid_particle_predictor = ParticlePredictor(nf_effect, nf_effect, args.position_dim)
+
+    def rotation_matrix_from_euler(self, params):
+        # params dim - 4: w, x, y, z
+
+        if self.use_gpu:
+            one = Variable(torch.ones(1, 1)).cuda()
+            zero = Variable(torch.zeros(1, 1)).cuda()
+        else:
+            one = Variable(torch.ones(1, 1))
+            zero = Variable(torch.zeros(1, 1))
+
+        # multiply the rotation matrix from the right-hand side
+        # the matrix should be the transpose of the conventional one
+
+        # Reference
+        # http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
+
+        theta = params[0].view(1, 1)
+        rot = torch.cat((
+            torch.cat((torch.cos(theta), torch.sin(theta)), 1),
+            torch.cat((-torch.sin(theta), torch.cos(theta)), 1),
+        ), 0)
+
+        # params = params / torch.norm(params)
+        # w, x, y, z = params[0].view(1, 1), params[1].view(1, 1), params[2].view(1, 1), params[3].view(1, 1)
+        #
+        # rot = torch.cat((
+        #     torch.cat((one-y*y*2-z*z*2, x*y*2+z*w*2, x*z*2-y*w*2), 1),
+        #     torch.cat((x*y*2-z*w*2, one-x*x*2-z*z*2, y*z*2+x*w*2), 1),
+        #     torch.cat((x*z*2+y*w*2, y*z*2-x*w*2, one-x*x*2-y*y*2), 1)), 0)
+
+        return rot
 
     def rotation_matrix_from_quaternion(self, params):
         # params dim - 4: w, x, y, z
@@ -279,10 +316,10 @@ class DPINet(nn.Module):
             if material[i] == 'rigid':
                 t = self.rigid_particle_predictor(torch.mean(particle_effect[st:ed], 0)).view(-1)
 
-                R = self.rotation_matrix_from_quaternion(t[:4])
-                b = t[4:] * self.std_p
+                R = self.rotation_matrix_from_euler(t[:1])
+                b = t[-2:] * self.std_p
 
-                p_0 = state[st:ed, :3] * self.std_p + self.mean_p
+                p_0 = state[st:ed, :2] * self.std_p + self.mean_p
                 c = torch.mean(p_0, dim=0)
                 p_1 = torch.mm(p_0 - c, R) + b + c
                 v = (p_1 - p_0) / self.dt

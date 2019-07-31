@@ -77,6 +77,18 @@ class LiquidFunDataset(Dataset):
         elif self.config.env == 'FluidFall' or self.config.env == 'LiquidFun':
             particle_pos, particle_vel = data
             particle_cluster = None
+        elif self.config.env == 'LiquidFun_Rigid':
+            particle_pos, particle_vel = data
+            particle_cluster = [[
+                0, 0, 1, 1, 2, 2, 3, 3,
+                0, 0, 1, 1, 2, 2, 3, 3,
+                4, 4, 5, 5, 6, 6, 7, 7,
+                4, 4, 5, 5, 6, 6, 7, 7,
+                8, 8, 9, 9, 10, 10, 11, 11,
+                8, 8, 9, 9, 10, 10, 11, 11,
+                12, 12, 13, 13, 14, 14, 15, 15,
+                12, 12, 13, 13, 14, 14, 15, 15,
+            ], None]
         else:
             raise Exception('Not implemented', self.config.env)
         n_particle = particle_pos.shape[0]
@@ -97,7 +109,7 @@ class LiquidFunDataset(Dataset):
             if self.config.verbose_data:
                 print('instance #%d' % idx, st, ed - 1)
 
-            if self.config.env == 'BoxBath':
+            if self.config.env == 'BoxBath' or self.config.env == 'LiquidFun_Rigid':
                 if mat == 'rigid':
                     particle_attr[st:ed, 0] = 1
                     queries = np.arange(st, ed)
@@ -271,7 +283,7 @@ class LiquidFunDataset(Dataset):
         root_pos = np.concatenate(root_pos, axis=0)
         root_vel = np.concatenate(root_vel, axis=0)
 
-        if self.config.env == 'BoxBath':
+        if self.config.env == 'BoxBath' or self.config.env == 'LiquidFun_Rigid':
             root_attr[:, 2 + 0] = 1
 
         node_attr = np.concatenate([particle_attr, root_attr], axis=0)
@@ -320,7 +332,11 @@ class LiquidFunDataset(Dataset):
         n_rollout = self.config.n_rollout * (self.config.eval_ratio if self.config.eval else self.config.train_ratio)
         assert n_rollout.is_integer()
         for rollout in tqdm(range(int(n_rollout))):
-            n_particle = 1024
+            if self.config.env == 'LiquidFun':
+                n_particle = 1024
+            elif self.config.env == 'LiquidFun_Rigid':
+                n_particle = 1024 + 64
+
             pos = np.zeros(shape=(self.config.time_step, n_particle, self.config.position_dim))
             vel = np.zeros(shape=(self.config.time_step, n_particle, self.config.position_dim))
             for time_step in range(self.config.time_step):

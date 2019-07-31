@@ -1,8 +1,8 @@
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('-env', '--environment', default='LiquidFun')
+parser.add_argument('-env', '--environment', default='LiquidFun_Rigid')
 parser.add_argument('-e', '--epoch', type=int, default=-1)
-parser.add_argument('-iter', '--iteration', type=int, default=0)
+parser.add_argument('-iter', '--iteration', type=int, default=-1)
 args = parser.parse_args()
 
 if __name__ == '__main__':
@@ -16,17 +16,20 @@ if __name__ == '__main__':
 
     from torch.utils.data import DataLoader
     from data import collate_fn
+
     loader = {
         phase: DataLoader(dataset[phase],
                           batch_size=config[phase].batch_size,
-                          shuffle = (not config[phase].eval),
-                          num_workers = config[phase].num_workers,
-                          collate_fn = collate_fn,
-        ) for phase in phases}
+                          shuffle=(not config[phase].eval),
+                          num_workers=config[phase].num_workers,
+                          collate_fn=collate_fn,
+                          ) for phase in phases}
 
     import torch
     from models import DPINet
-    model = DPINet(config['train'], dataset['train'].stats, None, residual=True, use_gpu=torch.cuda.is_available())
+
+    model = DPINet(config['train'], dataset['train'].stats, None,
+                   residual=True, use_gpu=torch.cuda.is_available())  #, p_dim=config['train'].position_dim)
 
     if args.epoch >= 0 or args.iteration >= 0:
         ckpt_path = '%s/ckpt/net_epoch_%d_iter_%d.pth' % (config['train'].outf, args.epoch, args.iteration)
@@ -35,9 +38,11 @@ if __name__ == '__main__':
 
     if config['train'].verbose_model:
         from utils import count_parameters
+
         print("Number of parameters: %d" % count_parameters(model))
 
     from torch import nn, optim
+
     criterionMSE = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=config['train'].lr, betas=(config['train'].beta1, 0.999))
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.8, patience=3, verbose=True)
@@ -49,11 +54,13 @@ if __name__ == '__main__':
     import numpy as np
     from tqdm import tqdm
     from torch.autograd import Variable
+
     best_valid_loss = np.inf
     for epoch in range(args.epoch + 1, config['train'].n_epoch):
 
         from torch.utils.tensorboard import SummaryWriter
         from datetime import datetime
+
         writer = SummaryWriter('{dir}/log/{time}.log'.format(
             dir=config['train'].outf,
             time=datetime.now().strftime('%b%d_%H-%M-%S')))
@@ -124,31 +131,34 @@ if __name__ == '__main__':
                         # n_relations = 0
                         # for j in range(len(Ra)):
                         #     n_relations += Ra[j].size(0)
-                        progress.set_postfix(loss='%.3f' % np.sqrt(loss.item()), agg='%.3f' % (losses / (progress.n + 1)))
+                        progress.set_postfix(loss='%.3f' % np.sqrt(loss.item()),
+                                             agg='%.3f' % (losses / (progress.n + 1)))
 
                         if progress.n % 100 == 0:
                             writer.add_scalar('{phase}/loss'.format(phase=phase),
-                                               np.sqrt(loss.item()),
-                                               epoch * len(dataset[phase]) + progress.n)
+                                              np.sqrt(loss.item()),
+                                              epoch * len(dataset[phase]) + progress.n)
                             writer.add_scalar('{phase}/agg'.format(phase=phase),
-                                               losses / (progress.n + 1),
-                                               epoch * len(dataset[phase]) + progress.n)
+                                              losses / (progress.n + 1),
+                                              epoch * len(dataset[phase]) + progress.n)
 
                         if phase == 'train' and progress.n > 0 and progress.n % config['train'].ckp_per_iter == 0:
-                            torch.save(model.state_dict(), '%s/ckpt/net_epoch_%d_iter_%d.pth' % (config['train'].outf, epoch, progress.n))
+                            torch.save(model.state_dict(),
+                                       '%s/ckpt/net_epoch_%d_iter_%d.pth' % (config['train'].outf, epoch, progress.n))
 
                         progress.update()
 
                 if phase == 'train':
-                    torch.save(model.state_dict(), '%s/ckpt/net_epoch_%d_iter_%d.pth' % (config['train'].outf, epoch, len(loader[phase])))
+                    torch.save(model.state_dict(),
+                               '%s/ckpt/net_epoch_%d_iter_%d.pth' % (config['train'].outf, epoch, len(loader[phase])))
 
                 losses /= len(loader[phase])
                 progress.set_postfix(loss=losses, best=best_valid_loss)
                 writer.add_scalar('{phase}/mean_loss'.format(phase=phase),
-                                   losses,
+                                  losses,
                                   (epoch + 1) * len(dataset[phase]))
                 writer.add_scalar('{phase}/best_eval_loss'.format(phase=phase),
-                                   best_valid_loss,
+                                  best_valid_loss,
                                   (epoch + 1) * len(dataset[phase]))
 
                 if phase == 'eval':
