@@ -223,18 +223,23 @@ def calc_shape_states_FluidShake(x_curr, x_last, box_dis, height, border):
 
     states = np.zeros((5, 14))
 
+    # floor
     states[0, :3] = np.array([x_curr, border/2., 0.])
     states[0, 3:6] = np.array([x_last, border/2., 0.])
 
+    # left
     states[1, :3] = np.array([x_curr-(dis_x+border)/2., (height+border)/2., 0.])
     states[1, 3:6] = np.array([x_last-(dis_x+border)/2., (height+border)/2., 0.])
 
+    # right
     states[2, :3] = np.array([x_curr+(dis_x+border)/2., (height+border)/2., 0.])
     states[2, 3:6] = np.array([x_last+(dis_x+border)/2., (height+border)/2., 0.])
 
+    # back
     states[3, :3] = np.array([x_curr, (height+border)/2., -(dis_z+border)/2.])
     states[3, 3:6] = np.array([x_last, (height+border)/2., -(dis_z+border)/2.])
 
+    # front
     states[4, :3] = np.array([x_curr, (height+border)/2., (dis_z+border)/2.])
     states[4, 3:6] = np.array([x_last, (height+border)/2., (dis_z+border)/2.])
 

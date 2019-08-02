@@ -241,9 +241,17 @@ def gen_PyFleX(info):
             # if env is FluidShake
             height = 1.0
             border = 0.025
+
+            # The number of the fluid particles
             dim_x = rand_int(10, 12)
             dim_y = rand_int(15, 20)
             dim_z = 3
+
+            # Fluid particles position
+            # 0.055 is the rest distance
+            # the particle radius = 0.1
+            # the rest distance = 0.1 * 0.55
+            # (x, y, z) is the left-bottom corner position
             x_center = rand_float(-0.2, 0.2)
             x = x_center - (dim_x-1)/2.*0.055
             y = 0.055/2. + border + 0.01
