@@ -18,6 +18,23 @@ def visualize_LiquidFun(points, outf, boundary=[[-2, 0], [2, 0], [2, 4], [-2, 4]
 
     plt.close()
 
+def visualize_LiquidFun_Rigid(points, outf, boundary=[[-2, 0], [2, 0], [2, 4], [-2, 4]]):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='equal')
+
+    boundary = np.asarray(boundary)
+    x, y = np.min(boundary, axis=0)
+    width, height = np.max(boundary, axis=0) - np.asarray([x, y])
+    # print('(x, y, width, height)', x, y, width, height)
+    box = patches.Rectangle((x, y), width, height, linewidth=1, edgecolor='r', facecolor='none')
+    ax.add_patch(box)
+    ax.scatter(points[64:, 0], points[64:, 1], alpha=0.5, s=np.pi*3, c='b')
+    ax.scatter(points[:64, 0], points[:64, 1], alpha=0.5, s=np.pi * 3, c='g')
+    # plt.show()
+    plt.savefig(outf)
+
+    plt.close()
+
 
 if __name__ == '__main__':
 

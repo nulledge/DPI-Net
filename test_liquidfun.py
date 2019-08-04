@@ -28,7 +28,7 @@ if __name__ == '__main__':
     from models import DPINet
     model = DPINet(config['train'], dataset['train'].stats, None, residual=True, use_gpu=torch.cuda.is_available())
 
-    if args.epoch >= 0 or args.iteration >= 0:
+    if args.epoch >= 0 and args.iteration >= 0:
         ckpt_path = '%s/ckpt/net_epoch_%d_iter_%d.pth' % (config['train'].outf, args.epoch, args.iteration)
         print('load model:', ckpt_path)
         model.load_state_dict(torch.load(ckpt_path))

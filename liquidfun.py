@@ -38,7 +38,7 @@ class LiquidFunDataset(Dataset):
 
         return int(length)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, data=None):
         rollout = idx // (self.config.time_step - 1) + 1
         time_step = idx % (self.config.time_step - 1)
 
@@ -48,8 +48,9 @@ class LiquidFunDataset(Dataset):
             str(rollout),
             '{time_step}.txt'.format(time_step=time_step),
         )
-        data = np.loadtxt(data_path)
-        data = [data[:, :self.config.position_dim], data[:, self.config.position_dim:]]
+        if data is None:
+            data = np.loadtxt(data_path)
+            data = [data[:, :self.config.position_dim], data[:, self.config.position_dim:]]
         # position.shape = (n_particles, position_dim)
         # velocity.shape = (n_particles, position_dim * (1 + n_his))
 
