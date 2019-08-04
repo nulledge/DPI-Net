@@ -55,8 +55,8 @@ if __name__ == '__main__':
     losses = 0.0
     pred_data = None
     with torch.set_grad_enabled(False):
-        with tqdm(total=len(loader), initial=(config.time_step - 1) * (rollout - 1)) as progress:
-            for idx in range((config.time_step - 1) * (rollout - 1), (config.time_step - 1) * rollout + 1):
+        with tqdm(total=len(loader), initial=(config.time_step - 1) * (rollout - 1) + config.time_step_clip) as progress:
+            for idx in range((config.time_step - 1) * (rollout - 1) + config.time_step_clip, (config.time_step - 1) * rollout):
                 rollout = progress.n // (config.time_step - 1) + 1
                 time_step = progress.n % (config.time_step - 1)
 
