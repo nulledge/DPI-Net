@@ -233,8 +233,10 @@ configs = {
         material = ['fluid', ],
         outf = os.path.join('data', 'test_LiquidFun')
     ),
-    'LiquidFun_Rigid_train' : Config(
-        env = 'LiquidFun_Rigid',
+
+
+    'LiquidFun_300_train' : Config(
+        env = 'LiquidFun_300',
         n_rollout = 3000,
         batch_size = 1,
         n_epoch = 5,
@@ -242,6 +244,86 @@ configs = {
         verbose_data = False,
         verbose_model = False,
         train_ratio = 0.9, eval_ratio = 0.1,
+        num_workers = 1,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 1,
+        relation_dim = 1,
+        time_step = 301, time_step_clip = 100,
+        n_instance = 1, n_stages = 1,
+        neighbor_radius = 0.08 / 0.05 * 0.025,
+        instance = [0, ],
+        root_num = [None, ],
+        material = ['fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun_300')
+    ),
+    'LiquidFun_300_eval' : Config(
+        env = 'LiquidFun_300',
+        n_rollout = 3000,
+        batch_size = 1,
+        eval = True, # evaluation on
+        gen_data = False,  # generate mean and stddev
+        verbose_data = False,
+        verbose_model = False,
+        train_ratio = 0.9, eval_ratio = 0.1,
+        num_workers = 1,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 1,
+        relation_dim = 1,
+        time_step = 151, time_step_clip = 100,
+        n_instance = 1, n_stages = 1,
+        neighbor_radius = 0.08 / 0.05 * 0.025,
+        instance = [0, ],
+        root_num = [None, ],
+        material = ['fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun_300')
+    ),
+
+
+    'LiquidFun_300_radius_train' : Config(
+        env = 'LiquidFun_300',
+        n_rollout = 3000,
+        batch_size = 1,
+        n_epoch = 5,
+        gen_data = False,  # generate mean and stddev
+        verbose_data = False,
+        verbose_model = False,
+        train_ratio = 0.9, eval_ratio = 0.1,
+        num_workers = 1,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 1,
+        relation_dim = 1,
+        time_step = 301, time_step_clip = 0,
+        n_instance = 1, n_stages = 1,
+        neighbor_radius = 0.025 * 2 * 1.1,
+        instance = [0, ],
+        root_num = [None, ],
+        material = ['fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun_300')
+    ),
+    'LiquidFun_300_radius_eval' : Config(
+        env = 'LiquidFun_300',
+        n_rollout = 3000,
+        batch_size = 1,
+        eval = True, # evaluation on
+        gen_data = False,  # generate mean and stddev
+        verbose_data = False,
+        verbose_model = False,
+        train_ratio = 0.9, eval_ratio = 0.1,
+        num_workers = 1,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 1,
+        relation_dim = 1,
+        time_step = 301, time_step_clip = 0,
+        n_instance = 1, n_stages = 1,
+        neighbor_radius = 0.025 * 2 * 1.1,
+        instance = [0, ],
+        root_num = [None, ],
+        material = ['fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun_300')
+    ),
+
+    'LiquidFun_Rigid_train' : Config(
+        env = 'LiquidFun_Rigid',
         num_workers = 10,
         state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
         attr_dim = 3,
@@ -259,13 +341,6 @@ configs = {
     ),
     'LiquidFun_Rigid_eval' : Config(
         env = 'LiquidFun_Rigid',
-        n_rollout = 3000,
-        batch_size = 1,
-        eval = True, # evaluation on
-        gen_data = False,  # generate mean and stddev
-        verbose_data = False,
-        verbose_model = False,
-        train_ratio = 0.9, eval_ratio = 0.1,
         num_workers = 10,
         state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
         attr_dim = 3,

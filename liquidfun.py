@@ -32,15 +32,15 @@ class LiquidFunDataset(Dataset):
     def __len__(self):
         length = self.config.n_rollout \
             * (self.config.eval_ratio if self.config.eval else self.config.train_ratio) \
-            * (self.config.time_step - 1)  # last time step should have the supervised data
+            * (self.config.time_step - 1 - self.config.time_step_clip)  # last time step should have the supervised data
 
         assert length.is_integer()
 
         return int(length)
 
     def __getitem__(self, idx, data=None):
-        rollout = idx // (self.config.time_step - 1) + 1
-        time_step = idx % (self.config.time_step - 1)
+        rollout = idx // (self.config.time_step - 1 - self.config.time_step_clip) + 1
+        time_step = idx % (self.config.time_step - 1 - self.config.time_step_clip) + self.config.time_step_clip
 
         data_path = os.path.join(
             self.config.outf,
@@ -75,7 +75,7 @@ class LiquidFunDataset(Dataset):
 
         if self.config.env == 'BoxBath':
             particle_pos, particle_vel, particle_cluster = data
-        elif self.config.env == 'FluidFall' or self.config.env == 'LiquidFun':
+        elif self.config.env == 'FluidFall' or self.config.env == 'LiquidFun' or self.config.env == 'LiquidFun_300':
             particle_pos, particle_vel = data
             particle_cluster = None
         elif self.config.env == 'LiquidFun_Rigid':
@@ -121,7 +121,7 @@ class LiquidFunDataset(Dataset):
                     anchors = np.arange(0, n_particle)
                 else:
                     raise Exception('Not implemented', mat)
-            elif self.config.env == 'FluidFall' or self.config.env == 'LiquidFun':
+            elif self.config.env == 'FluidFall' or self.config.env == 'LiquidFun' or self.config.env == 'LiquidFun_300':
                 if mat == 'fluid':
                     particle_attr[st:ed, 0] = 1
                     queries = np.arange(st, ed)
