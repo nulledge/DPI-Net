@@ -3,6 +3,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-env', '--environment', default='LiquidFun')
 parser.add_argument('-e', '--epoch', type=int, default=-1)
 parser.add_argument('-iter', '--iteration', type=int, default=0)
+parser.add_argument('-r', '--rollout', type=int, default=1)
 args = parser.parse_args()
 
 if __name__ == '__main__':
@@ -51,16 +52,18 @@ if __name__ == '__main__':
     from data import denormalize
     from visualize import visualize_LiquidFun
 
-    rollout = 3
     losses = 0.0
     pred_data = None
     with torch.set_grad_enabled(False):
-        with tqdm(total=len(loader), initial=(config.time_step - 1) * (rollout - 1) + config.time_step_clip) as progress:
-            for idx in range((config.time_step - 1) * (rollout - 1) + config.time_step_clip, (config.time_step - 1) * rollout):
-                rollout = progress.n // (config.time_step - 1) + 1
-                time_step = progress.n % (config.time_step - 1)
+        # , initial=(config.time_step - 1 - config.time_step_clip) * (args.rollout - 1)
+        with tqdm(total=config.time_step_clip - 1 - config.time_step_clip) as progress:
+            for idx in range(
+                    (config.time_step - 1 - config.time_step_clip) * (args.rollout - 1),
+                    (config.time_step - 1 - config.time_step_clip) * args.rollout):
+                rollout = idx // (config.time_step - 1 - config.time_step_clip) + 1
+                time_step = idx % (config.time_step - 1 - config.time_step_clip)
 
-                outf = 'out/test_LiquidFun/eval/{rollout}'.format(rollout=rollout)
+                outf = 'out/test_{env}/eval/{rollout}'.format(env=args.environment, rollout=rollout)
                 if not os.path.exists(outf):
                     os.makedirs(outf)
 
@@ -118,11 +121,12 @@ if __name__ == '__main__':
 
                 # visualize_LiquidFun(pos, outf='{outf}/gt_{time_step}.jpg'.format(outf=outf, time_step=time_step))
                 visualize_LiquidFun(pred_pos, outf='{outf}/pred_{time_step}.jpg'.format(outf=outf, time_step=time_step))
-                if time_step == config.time_step - 2:
+                if time_step == config.time_step - 2 - config.time_step_clip:
                     # os.system('ffmpeg -framerate 60 -i {outf}/gt_%d.jpg out/test_LiquidFun/eval/{rollout}_gt.mp4'.format(outf=outf, rollout=rollout))
-                    os.system('ffmpeg -framerate 60 -i {outf}/pred_%d.jpg out/test_LiquidFun/eval/{rollout}_pred.mp4'.format(outf=outf, rollout=rollout))
+                    os.system('ffmpeg -framerate 60 -i {outf}/pred_%d.jpg out/test_{env}/eval/{rollout}_pred.mp4'.format(outf=outf, env=args.environment, rollout=rollout))
 
                 progress.set_postfix(loss='%.3f' % np.sqrt(loss.item()), agg='%.3f' % (losses / (progress.n + 1)))
+                # progress.set_postfix(rollout=rollout, time_step=time_step, idx=idx)
                 progress.update()
 
             losses /= len(loader)

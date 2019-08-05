@@ -316,10 +316,13 @@ class DPINet(nn.Module):
             if material[i] == 'rigid':
                 t = self.rigid_particle_predictor(torch.mean(particle_effect[st:ed], 0)).view(-1)
 
-                R = self.rotation_matrix_from_euler(t[:1])
-                b = t[-2:] * self.std_p
+                if self.mean_v.shape[0] == 2:
+                    R = self.rotation_matrix_from_euler(t[:1])
+                else:
+                    R = self.rotation_matrix_from_quaternion(t[:4])
+                b = t[-self.mean_v.shape[0]:] * self.std_p
 
-                p_0 = state[st:ed, :2] * self.std_p + self.mean_p
+                p_0 = state[st:ed, :self.mean_v.shape[0]] * self.std_p + self.mean_p
                 c = torch.mean(p_0, dim=0)
                 p_1 = torch.mm(p_0 - c, R) + b + c
                 v = (p_1 - p_0) / self.dt
