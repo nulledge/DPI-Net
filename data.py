@@ -966,8 +966,8 @@ class PhysicsFleXDataset(Dataset):
         data_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep) + '.h5')
         data_nxt_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep + 1) + '.h5')
 
-        print('rollout, time_step', idx_rollout, idx_timestep)
-        print('data path', data_path)
+        # print('rollout, time_step', idx_rollout, idx_timestep)
+        # print('data path', data_path)
 
         data = load_data(self.data_names, data_path)
 
