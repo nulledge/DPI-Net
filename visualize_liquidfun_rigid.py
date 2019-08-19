@@ -3,10 +3,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-env', '--environment', default='LiquidFun_Rigid')
 parser.add_argument('-e', '--epoch', type=int, default=-1)
 parser.add_argument('-iter', '--iteration', type=int, default=0)
+parser.add_argument('-r', '--rollout', type=int, default=1)
 args = parser.parse_args()
 
 if __name__ == '__main__':
-    phase = 'eval'
+    phase = 'train'
 
     from environment import configs
     config = configs['{env}_{phase}'.format(env=args.environment, phase=phase)]
@@ -29,6 +30,7 @@ if __name__ == '__main__':
 
     if args.epoch >= 0 and args.iteration >= 0:
         ckpt_path = '%s/ckpt/net_epoch_%d_iter_%d.pth' % (config.outf, args.epoch, args.iteration)
+        # ckpt_path = '%s/ckpt/net_best.pth' % (config.outf)
         print('load model:', ckpt_path)
         model.load_state_dict(torch.load(ckpt_path))
     model.eval()
@@ -51,15 +53,21 @@ if __name__ == '__main__':
     from data import denormalize
     from visualize import visualize_LiquidFun_Rigid
 
+    # for temp_rollout in range(104, 200):
+    #     args.rollout = temp_rollout
+
     losses = 0.0
     pred_data = None
     with torch.set_grad_enabled(False):
-        with tqdm(total=len(loader)) as progress:
-            for idx in range(config.time_step - 1):
-                rollout = progress.n // (config.time_step - 1) + 1
-                time_step = progress.n % (config.time_step - 1)
+        # , initial=(config.time_step - 1 - config.time_step_clip) * (args.rollout - 1)
+        with tqdm(total=config.time_step_clip - 1 - config.time_step_clip) as progress:
+            for idx in range(
+                    (config.time_step - 1 - config.time_step_clip) * (args.rollout - 1),
+                    (config.time_step - 1 - config.time_step_clip) * args.rollout):
+                rollout = idx // (config.time_step - 1 - config.time_step_clip) + 1
+                time_step = idx % (config.time_step - 1 - config.time_step_clip)
 
-                outf = 'out/test_LiquidFun_Rigid/eval/{rollout}'.format(rollout=rollout)
+                outf = 'out/test_{env}/eval/{rollout}'.format(env=args.environment, rollout=rollout)
                 if not os.path.exists(outf):
                     os.makedirs(outf)
 
@@ -104,26 +112,124 @@ if __name__ == '__main__':
                 pos = state.data.cpu().numpy()[:1024+64, :2]
                 pos = denormalize([pos], [dataset.stats[0]])[0]
 
-                vel = state.data.cpu().numpy()[:1024 + 64, 2:]
-                vel = denormalize([pos], [dataset.stats[1]])[0]
+                vel = state.data.cpu().numpy()[:1024+64, 2:]
+                vel = denormalize([vel], [dataset.stats[1]])[0]
 
                 if time_step == 0:
                     pred_pos = pos.copy()
                     pred_vel = vel.copy()
+
+                    zero_pos = pos.copy()
+                    zero_vel = vel.copy()
+                    # pred_pos[64:] += np.asarray([[0.0, 2.0]])
+                    # # pred_pos[:64] += np.asarray([[0.0, 0.3]])
+                    # pred_vel = np.concatenate([
+                    #     np.tile([1.0, 0.5], 64).reshape(-1, 2) * 0.3,
+                    #     np.tile([0.0, 0.0], 1024).reshape(-1, 2),
+                    # ], axis=0)
+                # elif time_step <= 54:
+                #     pred_pos = pos.copy()
+                #     pred_vel = vel.copy()
                 else:
                     pred_vel = denormalize([predicted.data.cpu().numpy()], [dataset.stats[1]])[0]
-                    pred_pos = pred_pos + pred_vel[:1024 + 64] * config.dt
+                    pred_pos = pred_pos + pred_vel[:1024+64] * config.dt
+
+                if time_step <= 20:
+                    pred_pos[:64] = zero_pos[:64]
+                    pred_vel[:64] = zero_vel[:64]
+
                 pred_data = [pred_pos, pred_vel]
 
-                # visualize_LiquidFun_Rigid(pos, outf='{outf}/gt_{time_step}.jpg'.format(outf=outf, time_step=time_step))
-                visualize_LiquidFun_Rigid(pred_pos, outf='{outf}/pred_{time_step}.jpg'.format(outf=outf, time_step=time_step))
-                if time_step == config.time_step - 2:
-                    # os.system('ffmpeg -framerate 60 -i {outf}/gt_%d.jpg out/test_LiquidFun_Rigid/eval/{rollout}_gt.mp4'.format(outf=outf, rollout=rollout))
-                    os.system('ffmpeg -framerate 60 -i {outf}/pred_%d.jpg out/test_LiquidFun_Rigid/eval/{rollout}_pred.mp4'.format(outf=outf, rollout=rollout))
+                # if time_step <= 54:
+                #     pred_data = None
 
-                progress.set_postfix(loss='%.3f' % np.sqrt(loss.item()), agg='%.3f' % (losses / (progress.n + 1)))
-                # progress.set_postfix(mean_delta='%.3f' % float(delta / (progress.n + 1)))
+                # visualize_LiquidFun(pos, outf='{outf}/gt_{time_step}.jpg'.format(outf=outf, time_step=time_step))
+                visualize_LiquidFun_Rigid(pred_pos, outf='{outf}/pred_{time_step}.jpg'.format(outf=outf, time_step=time_step))
+                if time_step == config.time_step - 2 - config.time_step_clip:
+                    # os.system('ffmpeg -framerate 60 -i {outf}/gt_%d.jpg out/test_LiquidFun/eval/{rollout}_gt.mp4'.format(outf=outf, rollout=rollout))
+                    os.system('ffmpeg -framerate 60 -i {outf}/pred_%d.jpg out/test_{env}/eval/{rollout}_pred.mp4'.format(outf=outf, env=args.environment, rollout=rollout))
+
+                # progress.set_postfix(loss='%.3f' % np.sqrt(loss.item()), agg='%.3f' % (losses / (progress.n + 1)))
+                # progress.set_postfix(rollout=rollout, time_step=time_step, idx=idx)
                 progress.update()
 
-            losses /= len(loader)
-            progress.set_postfix(loss=losses)
+            # losses /= len(loader)
+            # progress.set_postfix(loss=losses)
+
+    # losses = 0.0
+    # pred_data = None
+    # with tqdm(total=config.time_step_clip - 1 - config.time_step_clip) as progress:
+    #     for idx in range(
+    #             (config.time_step - 1 - config.time_step_clip) * (args.rollout - 1),
+    #             (config.time_step - 1 - config.time_step_clip) * args.rollout):
+    #         rollout = idx // (config.time_step - 1 - config.time_step_clip) + 1
+    #         time_step = idx % (config.time_step - 1 - config.time_step_clip)
+    #
+    #         outf = 'out/test_{env}/eval/{rollout}'.format(env=args.environment, rollout=rollout)
+    #         if not os.path.exists(outf):
+    #             os.makedirs(outf)
+    #
+    #         attr, state, rels, n_particles, n_shapes, instance_idx, label = dataset.__getitem__(idx, data=None)
+    #         Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
+    #
+    #         Rr, Rs = [], []
+    #         for j in range(len(rels[0])):
+    #             Rr_idx, Rs_idx, values = rels[0][j], rels[1][j], rels[2][j]
+    #             Rr.append(torch.sparse.FloatTensor(
+    #                 Rr_idx, values, torch.Size([node_r_idx[j].shape[0], Ra[j].size(0)])))
+    #             Rs.append(torch.sparse.FloatTensor(
+    #                 Rs_idx, values, torch.Size([node_s_idx[j].shape[0], Ra[j].size(0)])))
+    #
+    #         data = [attr, state, Rr, Rs, Ra, label]
+    #
+    #         if torch.cuda.is_available():
+    #             for d in range(len(data)):
+    #                 if type(data[d]) == list:
+    #                     for t in range(len(data[d])):
+    #                         data[d][t] = Variable(data[d][t]).cuda()
+    #                 else:
+    #                     data[d] = Variable(data[d]).cuda()
+    #         else:
+    #             for d in range(len(data)):
+    #                 if type(data[d]) == list:
+    #                     for t in range(len(data[d])):
+    #                         data[d][t] = torch.Variable(data[d][t])
+    #                 else:
+    #                     data[d] = torch.Variable(data[d])
+    #
+    #         attr, state, Rr, Rs, Ra, label = data
+    #
+    #         # predicted = model(
+    #         #     attr, state, Rr, Rs, Ra, n_particles,
+    #         #     node_r_idx, node_s_idx, pstep,
+    #         #     instance_idx, config.material, config.verbose_model)
+    #
+    #         # loss = criterionMSE(predicted, label)
+    #         # losses += np.sqrt(loss.item())
+    #
+    #         pos = state.data.cpu().numpy()[:1024 + 64, :2]
+    #         pos = denormalize([pos], [dataset.stats[0]])[0]
+    #
+    #         # vel = state.data.cpu().numpy()[:1024 + 64, 2:]
+    #         # vel = denormalize([pos], [dataset.stats[1]])[0]
+    #         #
+    #         # if time_step == 0:
+    #         #     pred_pos = pos.copy()
+    #         #     pred_vel = vel.copy()
+    #         # else:
+    #         #     pred_vel = denormalize([predicted.data.cpu().numpy()], [dataset.stats[1]])[0]
+    #         #     pred_pos = pred_pos + pred_vel[:1024 + 64] * config.dt
+    #         # pred_data = [pred_pos, pred_vel]
+    #
+    #         # visualize_LiquidFun(pos, outf='{outf}/gt_{time_step}.jpg'.format(outf=outf, time_step=time_step))
+    #         visualize_LiquidFun_Rigid(pos, outf='{outf}/gt_{time_step}.jpg'.format(outf=outf, time_step=time_step))
+    #         if time_step == config.time_step - 2 - config.time_step_clip:
+    #             os.system('ffmpeg -framerate 60 -i {outf}/gt_%d.jpg out/test_{env}/eval/{rollout}_gt.mp4'.format(
+    #                 outf=outf, env=args.environment, rollout=rollout))
+    #
+    #         # progress.set_postfix(loss='%.3f' % np.sqrt(loss.item()), agg='%.3f' % (losses / (progress.n + 1)))
+    #         # progress.set_postfix(rollout=rollout, time_step=time_step, idx=idx)
+    #         progress.update()
+    #
+    #     # losses /= len(loader)
+    #     # progress.set_postfix(loss=losses)
