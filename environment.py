@@ -632,6 +632,8 @@ configs = {
 
     'LiquidFun_Rigid_train' : Config(
         env = 'LiquidFun_Rigid',
+        n_rollout = 3000,
+        n_epoch = 10,
         num_workers = 10,
         verbose_data = False, verbose_model = False,
         state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
@@ -650,6 +652,7 @@ configs = {
     ),
     'LiquidFun_Rigid_eval' : Config(
         env = 'LiquidFun_Rigid',
+        n_rollout = 3000,
         num_workers = 10,
         verbose_data = False, verbose_model = False,
         state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]

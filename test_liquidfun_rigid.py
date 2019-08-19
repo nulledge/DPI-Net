@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
             with torch.set_grad_enabled(phase == 'train'):
                 losses = 0
-                with tqdm(total=len(loader[phase])) as progress:
+                with tqdm(total=len(loader[phase]), desc='epoch({epoch})'.format(epoch=epoch)) as progress:
                     for data in loader[phase]:
                         attr, state, rels, n_particles, n_shapes, instance_idx, label = data
                         Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
@@ -131,7 +131,7 @@ if __name__ == '__main__':
                         # n_relations = 0
                         # for j in range(len(Ra)):
                         #     n_relations += Ra[j].size(0)
-                        progress.set_postfix(loss='%.3f' % np.sqrt(loss.item()),
+                        progress.set_postfix(# loss='%.3f' % np.sqrt(loss.item()),
                                              agg='%.3f' % (losses / (progress.n + 1)))
 
                         if progress.n % 100 == 0:
