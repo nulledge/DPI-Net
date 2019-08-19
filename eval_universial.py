@@ -19,7 +19,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from data import load_data, prepare_input, normalize, denormalize
+from data_universial import load_data, prepare_input, normalize, denormalize
 from models import DPINet
 from utils import calc_box_init_FluidShake
 
@@ -66,42 +66,11 @@ args = parser.parse_args()
 
 
 phases_dict = dict()
+# args.env = env
 
-if args.env == 'FluidFall':
-    env_idx = 4
-    data_names = ['positions', 'velocities']
-
-    # object states:
-    # [x, y, z, xdot, ydot, zdot]
-    args.state_dim = 6
-    args.position_dim = 3
-
-    # object attr:
-    # [fluid]
-    args.attr_dim = 1
-
-    # relation attr:
-    # [none]
-    args.relation_dim = 1
-
-    args.time_step = 121
-    args.time_step_clip = 5
-    args.n_instance = 1
-    args.n_stages = 1
-
-    args.neighbor_radius = 0.08
-
-    phases_dict["instance_idx"] = [0, 189]
-    phases_dict["root_num"] = [[]]
-    phases_dict["instance"] = ['fluid']
-    phases_dict["material"] = ['fluid']
-
-    args.outf = 'dump_FluidFall/' + args.outf
-    args.evalf = 'dump_FluidFall/' + args.evalf
-
-elif args.env == 'BoxBath':
+if args.env == 'BoxBath':
     env_idx = 1
-    data_names = ['positions', 'velocities', 'clusters']
+    args.n_rollout = 3000
 
     # object states:
     # [x, y, z, xdot, ydot, zdot]
@@ -109,8 +78,8 @@ elif args.env == 'BoxBath':
     args.position_dim = 3
 
     # object attr:
-    # [rigid, fluid, root_0]
-    args.attr_dim = 3
+    # universial [rigid, fluid, wall_0, wall_1, wall_2, wall_3, wall_4, root]
+    args.attr_dim = 8
 
     # relation attr:
     # [none]
@@ -132,16 +101,15 @@ elif args.env == 'BoxBath':
     phases_dict["instance"] = ['cube', 'fluid']
     phases_dict["material"] = ['rigid', 'fluid']
 
-    args.outf = 'dump_BoxBath/' + args.outf
-    args.evalf = 'dump_BoxBath/' + args.evalf
+    args.outf = 'dump_mixed/files'
 
 elif args.env == 'FluidShake':
     env_idx = 6
-    # data_names = ['positions', 'velocities', 'shape_quats', 'scene_params']
-    data_names = ['positions', 'velocities', 'clusters', 'shape_quats', 'scene_params']
 
     height = 1.0
     border = 0.025
+
+    args.n_rollout = 2000
 
     # object states:
     # [x, y, z, xdot, ydot, zdot]
@@ -149,13 +117,13 @@ elif args.env == 'FluidShake':
     args.position_dim = 3
 
     # object attr:
-    # [fluid, wall_0, wall_1, wall_2, wall_3, wall_4]
     # wall_0: floor
     # wall_1: left
     # wall_2: right
     # wall_3: back
     # wall_4: front
-    args.attr_dim = 6
+    # universial [rigid, fluid, wall_0, wall_1, wall_2, wall_3, wall_4, root]
+    args.attr_dim = 8
 
     # relation attr:
     # [none]
@@ -164,7 +132,8 @@ elif args.env == 'FluidShake':
     args.n_instance = 1
     args.time_step = 301
     args.time_step_clip = 0
-    args.n_stages = 2
+    # args.n_stages = 2
+    args.n_stages = 4
 
     args.neighbor_radius = 0.08
 
@@ -172,75 +141,56 @@ elif args.env == 'FluidShake':
     phases_dict["instance"] = ["fluid"]
     phases_dict["material"] = ["fluid"]
 
-    args.outf = 'dump_FluidShake/' + args.outf
-    args.evalf = 'dump_FluidShake/' + args.evalf
-
-elif args.env == 'RiceGrip':
-    env_idx = 5
-    data_names = ['positions', 'velocities', 'shape_quats', 'clusters', 'scene_params']
-
-    args.n_his = 3
-
-    # object state:
-    # [rest_x, rest_y, rest_z, rest_xdot, rest_ydot, rest_zdot,
-    #  x, y, z, xdot, ydot, zdot, quat.x, quat.y, quat.z, quat.w]
-    args.state_dim = 16 + 6 * args.n_his
-    args.position_dim = 6
-
-    # object attr:
-    # [fluid, root, gripper_0, gripper_1,
-    #  clusterStiffness, clusterPlasticThreshold, clusterPlasticCreep]
-    args.attr_dim = 7
-
-    # relation attr:
-    # [none]
-    args.relation_dim = 1
-
-    args.n_instance = 1
-    args.time_step = 41
-    args.time_step_clip = 0
-    args.n_stages = 4
-
-    args.neighbor_radius = 0.08
-    args.n_roots = 30
-
-    phases_dict["root_num"] = [[args.n_roots]]
-    phases_dict["root_sib_radius"] = [[5.0]]
-    phases_dict["root_des_radius"] = [[0.2]]
-    phases_dict["root_pstep"] = [[args.pstep]]
-    phases_dict["instance"] = ["rice"]
-    phases_dict["material"] = ["fluid"]
-
-    args.outf = 'dump_RiceGrip/' + args.outf
-    args.evalf = 'dump_RiceGrip/' + args.evalf
+    args.outf = 'dump_mixed/files'
 
 else:
     raise AssertionError("Unsupported env")
 
 
 args.outf = args.outf + '_' + args.env
-args.evalf = args.evalf + '_' + args.env
-args.dataf = 'data/' + args.dataf + '_' + args.env
+args.dataf = 'data/data_' + args.env
+
+
+# args.outf = args.outf + '_' + args.env
+# args.evalf = args.evalf + '_' + args.env
+# args.dataf = 'data/' + args.dataf + '_' + args.env
 
 print(args)
 
+if args.env == 'FluidShake':
+    data_names = ['positions', 'velocities', 'clusters', 'shape_quats', 'scene_params']
+elif args.env == 'BoxBath':
+    data_names = ['positions', 'velocities', 'clusters', 'shape_quats', 'scene_params']
+else:
+    raise Exception()
+
 
 print("Loading stored stat from %s" % args.dataf)
-stat_path = os.path.join(args.dataf, 'stat.h5')
-stat = load_data(data_names[:2], stat_path)
-for i in range(len(stat)):
-    stat[i] = stat[i][-args.position_dim:, :]
+stat_path = os.path.join('data/data_BoxBath', 'stat.h5')
+stat_BoxBath = load_data(data_names[:2], stat_path)
+for i in range(len(stat_BoxBath)):
+    stat_BoxBath[i] = stat_BoxBath[i][-args.position_dim:, :]
     # print(data_names[i], stat[i].shape)
 
+stat_path = os.path.join('data/data_FluidShake', 'stat.h5')
+stat_FluidShake = load_data(data_names[:2], stat_path)
+for i in range(len(stat_FluidShake)):
+    stat_FluidShake[i] = stat_FluidShake[i][-args.position_dim:, :]
+
+from data_universial import combine_stat
+for j in range(len(stat_BoxBath)):
+    stat_BoxBath[j] = combine_stat(stat_BoxBath[j], stat_FluidShake[j])
+stat = stat_BoxBath
 
 use_gpu = torch.cuda.is_available()
 
-model = DPINet(args, stat, phases_dict, residual=True, use_gpu=use_gpu)
+model = DPINet(args, stat, None, residual=True, use_gpu=use_gpu)
 
-if args.epoch == 0 and args.iter == 0:
-    model_file = os.path.join(args.outf, 'net_best.pth')
-else:
-    model_file = os.path.join(args.outf, 'net_epoch_%d_iter_%d.pth' % (args.epoch, args.iter))
+# if args.epoch == 0 and args.iter == 0:
+#     model_file = os.path.join(args.outf, 'net_best.pth')
+# else:
+#     model_file = os.path.join(args.outf, 'net_epoch_%d_iter_%d.pth' % (args.epoch, args.iter))
+model_file = 'dump_mixed/files_FluidShake/net_best.pth'
 
 print("Loading network from %s" % model_file)
 model.load_state_dict(torch.load(model_file))
@@ -265,8 +215,6 @@ for idx in range(len(infos)):
     des_dir = os.path.join(args.evalf, 'rollout_%d' % idx)
     os.system('mkdir -p ' + des_dir)
 
-    print(args.dataf)
-
     # ground truth
     for step in range(args.time_step - 1):
         data_path = os.path.join(args.dataf, 'valid', str(infos[idx]), str(step) + '.h5')
@@ -276,36 +224,12 @@ for idx in range(len(infos)):
         data_nxt = load_data(data_names, data_nxt_path)
         velocities_nxt = data_nxt[1]
 
-        # positions, velocities, clusters, shape_quats, scene_params = data
-        if args.env == 'BoxBath':
-            data = [data[0][:1024], data[1][:1024], data[2]]
-            velocities_nxt = velocities_nxt[:1024]
-        elif args.env == 'FluidFall':
-            raise Exception()
-        elif args.env == 'RiceGrip':
-            raise Exception()
-        elif args.env == 'FluidShake':
-            data = [data[0], data[1], data[3], data[4]]
-        else:
-            raise AssertionError("Unsupported env")
-
         if step == 0:
-            # positions, velocities, clusters, shape_quats, scene_params = data
-            if args.env == 'BoxBath':
-                # data = (data[0], data[1], data[2])
-                positions, velocities, clusters = data
-                n_shapes = 0
-                scene_params = np.zeros(1)
-            elif args.env == 'FluidFall':
-                raise Exception()
-            elif args.env == 'RiceGrip':
-                raise Exception()
-            elif args.env == 'FluidShake':
-                # data = [data[0], data[1], data[3], data[4]]
-                positions, velocities, shape_quats, scene_params = data
+            if args.env == 'FluidShake' or args.env == 'BoxBath':
+                positions, velocities, clusters, shape_quats, scene_params = data
                 n_shapes = shape_quats.shape[0]
             else:
-                raise AssertionError("Unsupported env")
+                raise Exception()
 
             count_nodes = positions.shape[0]
             n_particles = count_nodes - n_shapes
@@ -323,11 +247,11 @@ for idx in range(len(infos)):
 
         # print(step, np.sum(np.abs(v_nxt_gt[step, :args.n_particles])))
 
-        if args.env == 'RiceGrip' or args.env == 'FluidShake':
+        if args.env == 'RiceGrip' or args.env == 'FluidShake' or args.env == 'BoxBath':
             s_gt[step, :, :3] = positions[n_particles:, :3]
             s_gt[step, :, 3:6] = p_gt[max(0, step-1), n_particles:, :3]
-            s_gt[step, :, 6:10] = data[2]
-            s_gt[step, :, 10:] = data[2]
+            s_gt[step, :, 6:10] = data[3]
+            s_gt[step, :, 10:] = data[3]
 
         positions = positions + velocities_nxt * args.dt
 
@@ -335,23 +259,11 @@ for idx in range(len(infos)):
     data_path = os.path.join(args.dataf, 'valid', str(infos[idx]), '0.h5')
     data = load_data(data_names, data_path)
 
-    # positions, velocities, clusters, shape_quats, scene_params = data
-    if args.env == 'BoxBath':
-        data = [data[0][:1024], data[1][:1024], data[2]]
-    elif args.env == 'FluidFall':
-        raise Exception()
-    elif args.env == 'RiceGrip':
-        raise Exception()
-    elif args.env == 'FluidShake':
-        data = [data[0], data[1], data[3], data[4]]
-    else:
-        raise AssertionError("Unsupported env")
-
     for step in range(args.time_step - 1):
         if step % 10 == 0:
             print("Step %d / %d" % (step, args.time_step - 1))
 
-        p_pred[step] = data[0][:1024]
+        p_pred[step] = data[0]
 
         if args.env == 'RiceGrip' and step == 0:
             data[0] = p_gt[step + 1].copy()
@@ -359,7 +271,6 @@ for idx in range(len(infos)):
             continue
 
         # st_time = time.time()
-
         attr, state, rels, n_particles, n_shapes, instance_idx = \
                 prepare_input(data, stat, args, phases_dict, args.verbose_data)
 
@@ -413,15 +324,15 @@ for idx in range(len(infos)):
 
         vels = denormalize([vels.data.cpu().numpy()], [stat[1]])[0]
 
-        if args.env == 'RiceGrip' or args.env == 'FluidShake':
+        if args.env == 'RiceGrip' or args.env == 'FluidShake' or args.env == 'BoxBath':
             vels = np.concatenate([vels, v_nxt_gt[step, n_particles:]], 0)
-        data[0] = data[0][:1024] + vels * args.dt
+        data[0] = data[0] + vels * args.dt
 
         if args.env == 'RiceGrip':
             # shifting the history
             # positions, restPositions
-            data[1][:1024, args.position_dim:] = data[1][:, :-args.position_dim]
-        data[1][:1024, :args.position_dim] = vels
+            data[1][:, args.position_dim:] = data[1][:, :-args.position_dim]
+        data[1][:, :args.position_dim] = vels
 
         if args.debug:
             data[0] = p_gt[step + 1].copy()
@@ -476,11 +387,27 @@ for idx in range(len(infos)):
             center = boxes[box_idx][1]
             quat = boxes[box_idx][2]
             pyflex.add_box(halfEdge, center, quat)
+    elif args.env == 'BoxBath':
+        height = 1.0
+        border = 0.025
 
-    for step in range(args.time_step - 1):
+        x_center = 1.25170865 / 2
+        z_center = 0.38907054 / 2
+
+        box_dis_x = 1.26127375 + border
+        box_dis_z = 0.41770718 + border
+
+        boxes = calc_box_init_FluidShake(box_dis_x, box_dis_z, height, border)
+        for i in range(len(boxes)):
+            halfEdge = boxes[i][0]
+            center = boxes[i][1]
+            quat = boxes[i][2]
+            pyflex.add_box(halfEdge, center, quat)
+    from tqdm import tqdm
+    for step in tqdm(range(args.time_step - 1)):
         if args.env == 'RiceGrip':
             pyflex.set_shape_states(s_gt[step])
-        elif args.env == 'FluidShake':
+        elif args.env == 'FluidShake' or args.env == 'BoxBath':
             pyflex.set_shape_states(s_gt[step, :-1])
 
         mass = np.zeros((n_particles, 1))

@@ -157,8 +157,6 @@ class Config(object):
         self.instance = instance
         self.material = material
         self.root_num = root_num
-
-
 configs = {
     'FluidFall' : Config(
         env = 'FluidFall',
@@ -635,6 +633,7 @@ configs = {
     'LiquidFun_Rigid_train' : Config(
         env = 'LiquidFun_Rigid',
         num_workers = 10,
+        verbose_data = False, verbose_model = False,
         state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
         attr_dim = 3,
         relation_dim = 1,
@@ -652,6 +651,7 @@ configs = {
     'LiquidFun_Rigid_eval' : Config(
         env = 'LiquidFun_Rigid',
         num_workers = 10,
+        verbose_data = False, verbose_model = False,
         state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
         attr_dim = 3,
         relation_dim = 1,
@@ -689,3 +689,5 @@ configs = {
         outf=os.path.join('data', 'vis_LiquidFun')
     ),
 }
+
+

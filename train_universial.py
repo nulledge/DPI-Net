@@ -17,7 +17,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from models import DPINet
-from data import PhysicsFleXDataset, collate_fn
+from data_universial import PhysicsFleXDataset, collate_fn
 
 from utils import count_parameters
 
@@ -75,166 +75,119 @@ args = parser.parse_args()
 
 phases_dict = dict()
 
+datasets = {}
+import copy
 
-if args.env == 'FluidFall':
-    args.n_rollout = 3000
+for env in ['BoxBath', 'FluidShake']:
+    args.env = env
 
-    # object states:
-    # [x, y, z, xdot, ydot, zdot]
-    args.state_dim = 6
-    args.position_dim = 3
+    if args.env == 'BoxBath':
+        args.n_rollout = 3000
 
-    # object attr:
-    # [fluid]
-    args.attr_dim = 1
+        # object states:
+        # [x, y, z, xdot, ydot, zdot]
+        args.state_dim = 6
+        args.position_dim = 3
 
-    # relation attr:
-    # [none]
-    args.relation_dim = 1
+        # object attr:
+        # universial [rigid, fluid, wall_0, wall_1, wall_2, wall_3, wall_4, root]
+        args.attr_dim = 8
 
-    args.time_step = 121
-    args.time_step_clip = 5
-    args.n_instance = 1
-    args.n_stages = 1
+        # relation attr:
+        # [none]
+        args.relation_dim = 1
 
-    args.neighbor_radius = 0.08
+        args.time_step = 151
+        args.time_step_clip = 0
+        args.n_instance = 2
+        args.n_stages = 4
 
-    phases_dict["instance_idx"] = [0, 189]
-    phases_dict["root_num"] = [[]]
-    phases_dict["instance"] = ['fluid']
-    phases_dict["material"] = ['fluid']
+        args.neighbor_radius = 0.08
 
-    args.outf = 'dump_FluidFall/' + args.outf
+        # ball, fluid
+        phases_dict["instance_idx"] = [0, 64, 1024]
+        phases_dict["root_num"] = [[8], []]
+        phases_dict["root_sib_radius"] = [[0.4], []]
+        phases_dict["root_des_radius"] = [[0.08], []]
+        phases_dict["root_pstep"] = [[args.pstep], []]
+        phases_dict["instance"] = ['cube', 'fluid']
+        phases_dict["material"] = ['rigid', 'fluid']
 
-elif args.env == 'BoxBath':
-    args.n_rollout = 3000
+        args.outf = 'dump_mixed/files'
 
-    # object states:
-    # [x, y, z, xdot, ydot, zdot]
-    args.state_dim = 6
-    args.position_dim = 3
+    elif args.env == 'FluidShake':
+        args.n_rollout = 2000
 
-    # object attr:
-    # [rigid, fluid, root_0]
-    args.attr_dim = 3
+        # object states:
+        # [x, y, z, xdot, ydot, zdot]
+        args.state_dim = 6
+        args.position_dim = 3
 
-    # relation attr:
-    # [none]
-    args.relation_dim = 1
+        # object attr:
+        # wall_0: floor
+        # wall_1: left
+        # wall_2: right
+        # wall_3: back
+        # wall_4: front
+        # universial [rigid, fluid, wall_0, wall_1, wall_2, wall_3, wall_4, root]
+        args.attr_dim = 8
 
-    args.time_step = 151
-    args.time_step_clip = 0
-    args.n_instance = 2
-    args.n_stages = 4
+        # relation attr:
+        # [none]
+        args.relation_dim = 1
 
-    args.neighbor_radius = 0.08
+        args.n_instance = 1
+        args.time_step = 301
+        args.time_step_clip = 0
+        # args.n_stages = 2
+        args.n_stages = 4
 
-    # ball, fluid
-    phases_dict["instance_idx"] = [0, 64, 1024]
-    phases_dict["root_num"] = [[8], []]
-    phases_dict["root_sib_radius"] = [[0.4], []]
-    phases_dict["root_des_radius"] = [[0.11], []]
-    phases_dict["root_pstep"] = [[args.pstep], []]
-    phases_dict["instance"] = ['cube', 'fluid']
-    phases_dict["material"] = ['rigid', 'fluid']
+        args.neighbor_radius = 0.08
 
-    args.outf = 'dump_BoxBath/' + args.outf
+        phases_dict["root_num"] = [[]]
+        phases_dict["instance"] = ["fluid"]
+        phases_dict["material"] = ["fluid"]
 
-elif args.env == 'FluidShake':
-    args.n_rollout = 2000
+        args.outf = 'dump_mixed/files'
 
-    # object states:
-    # [x, y, z, xdot, ydot, zdot]
-    args.state_dim = 6
-    args.position_dim = 3
-
-    # object attr:
-    # [fluid, wall_0, wall_1, wall_2, wall_3, wall_4]
-    # wall_0: floor
-    # wall_1: left
-    # wall_2: right
-    # wall_3: back
-    # wall_4: front
-    args.attr_dim = 6
-
-    # relation attr:
-    # [none]
-    args.relation_dim = 1
-
-    args.n_instance = 1
-    args.time_step = 301
-    args.time_step_clip = 0
-    args.n_stages = 2
-
-    args.neighbor_radius = 0.08
-
-    phases_dict["root_num"] = [[]]
-    phases_dict["instance"] = ["fluid"]
-    phases_dict["material"] = ["fluid"]
-
-    args.outf = 'dump_FluidShake/' + args.outf
-
-elif args.env == 'RiceGrip':
-    args.n_rollout = 5000
-    args.n_his = 3
-
-    # object state:
-    # [rest_x, rest_y, rest_z, rest_xdot, rest_ydot, rest_zdot,
-    #  x, y, z, xdot, ydot, zdot, quat.x, quat.y, quat.z, quat.w]
-    args.state_dim = 16 + 6 * args.n_his
-    args.position_dim = 6
-
-    # object attr:
-    # [fluid, root, gripper_0, gripper_1,
-    #  clusterStiffness, clusterPlasticThreshold, clusterPlasticCreep]
-    args.attr_dim = 7
-
-    # relation attr:
-    # [none]
-    args.relation_dim = 1
-
-    args.n_instance = 1
-    args.time_step = 41
-    args.time_step_clip = 0
-    args.n_stages = 4
-    args.n_roots = 30
-
-    args.neighbor_radius = 0.08
-
-    phases_dict["root_num"] = [[args.n_roots]]
-    phases_dict["root_sib_radius"] = [[5.0]]
-    phases_dict["root_des_radius"] = [[0.2]]
-    phases_dict["root_pstep"] = [[args.pstep]]
-    phases_dict["instance"] = ["rice"]
-    phases_dict["material"] = ["fluid"]
-
-    args.outf = 'dump_RiceGrip/' + args.outf
-
-else:
-    raise AssertionError("Unsupported env")
-
-
-args.outf = args.outf + '_' + args.env
-args.dataf = 'data/' + args.dataf + '_' + args.env
-
-os.system('mkdir -p ' + args.outf)
-os.system('mkdir -p ' + args.dataf)
-
-# generate data
-datasets = {phase: PhysicsFleXDataset(
-    args, phase, phases_dict, args.verbose_data) for phase in ['train', 'valid']}
-
-for phase in ['train', 'valid']:
-    if args.gen_data:
-        datasets[phase].gen_data(args.env)
     else:
-        datasets[phase].load_data(args.env)
+        raise AssertionError("Unsupported env")
+
+
+    args.outf = args.outf + '_' + args.env
+    args.dataf = 'data/data_' + args.env
+
+    os.system('mkdir -p ' + args.outf)
+    os.system('mkdir -p ' + args.dataf)
+
+    # generate data
+    datasets[env] = {phase: PhysicsFleXDataset(
+        copy.deepcopy(args), copy.deepcopy(phase), copy.deepcopy(phases_dict), args.verbose_data) for phase in ['train', 'valid']}
+
+    for phase in ['train', 'valid']:
+        if args.gen_data:
+            datasets[env][phase].gen_data(copy.deepcopy(args.env))
+        else:
+            datasets[env][phase].load_data(copy.deepcopy(args.env))
+
 
 use_gpu = torch.cuda.is_available()
 
+from data_universial import combine_stat
+
+for env in ['BoxBath', 'FluidShake']:
+    for task in ['train', 'valid']:
+        print(env, task, len(datasets[env][task]))
+
+for j in range(len(datasets['BoxBath']['train'].stat)):
+    datasets['BoxBath']['train'].stat[j] = datasets['FluidShake']['train'].stat[j] \
+        = datasets['BoxBath']['valid'].stat[j] = datasets['FluidShake']['valid'].stat[j] = combine_stat(
+        datasets['BoxBath']['train'].stat[j],
+        datasets['FluidShake']['train'].stat[j])
 
 dataloaders = {x: torch.utils.data.DataLoader(
-    datasets[x], batch_size=args.batch_size,
+    torch.utils.data.ConcatDataset([datasets['BoxBath'][x], datasets['FluidShake'][x]]),
+    batch_size=args.batch_size,
     shuffle=True if x == 'train' else False,
     num_workers=args.num_workers,
     collate_fn=collate_fn)
@@ -242,7 +195,7 @@ dataloaders = {x: torch.utils.data.DataLoader(
 
 
 # define propagation network
-model = DPINet(args, datasets['train'].stat, phases_dict, residual=True, use_gpu=use_gpu)
+model = DPINet(args, datasets['BoxBath']['train'].stat, phases_dict, residual=True, use_gpu=use_gpu)
 
 print("Number of parameters: %d" % count_parameters(model))
 
@@ -274,7 +227,7 @@ for epoch in range(st_epoch, args.n_epoch):
         losses = 0.
         for i, data in enumerate(dataloaders[phase]):
 
-            attr, state, rels, n_particles, n_shapes, instance_idx, label = data
+            attr, state, rels, n_particles, n_shapes, instance_idx, label, m_dict = data
             Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
 
             Rr, Rs = [], []
@@ -309,7 +262,7 @@ for epoch in range(st_epoch, args.n_epoch):
                 predicted = model(
                     attr, state, Rr, Rs, Ra, n_particles,
                     node_r_idx, node_s_idx, pstep,
-                    instance_idx, phases_dict['material'], args.verbose_model)
+                    instance_idx, m_dict, False)
                 # print('Time forward', time.time() - st_time)
 
                 # print(predicted)
