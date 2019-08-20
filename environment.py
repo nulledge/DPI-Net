@@ -52,6 +52,8 @@ class Config(object):
         'instance',             # index of instances
         'material',             # material of each instance
         'root_num',             # sampling for rigid body
+
+        'weight',               # weight for rigid body
     ]
 
     def __init__(
@@ -106,6 +108,8 @@ class Config(object):
             instance            = [],
             material            = [],
             root_num            = [],
+
+            weight              = 1.0,
     ):
         self.env = env
         self.pstep = pstep
@@ -157,6 +161,9 @@ class Config(object):
         self.instance = instance
         self.material = material
         self.root_num = root_num
+
+        self.weight = weight
+
 configs = {
     'FluidFall' : Config(
         env = 'FluidFall',
@@ -669,6 +676,93 @@ configs = {
         material = ['rigid', 'fluid', ],
         outf = os.path.join('data', 'test_LiquidFun_Rigid')
     ),
+
+
+    'LiquidFun_Rigid_weight50_train' : Config(
+        weight = 50,
+        env = 'LiquidFun_Rigid',
+        n_rollout = 3000,
+        n_epoch = 10,
+        num_workers = 10,
+        verbose_data = False, verbose_model = False,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 3,
+        relation_dim = 1,
+        time_step = 301, time_step_clip = 0,
+        n_instance = 2, n_stages = 4,
+        neighbor_radius = 0.08 / 0.05 * 0.025,
+        root_sib_radius = [0.04 / 0.05 * 0.025, None, ],
+        root_des_radius = [0.08 / 0.05 * 0.025, None, ],
+        root_pstep = [2, [], ],
+        instance = [0, 64, ],
+        root_num = [16, None, ],
+        material = ['rigid', 'fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun_Rigid_weight50')
+    ),
+    'LiquidFun_Rigid_weight50_eval' : Config(
+        weight = 50,
+        env = 'LiquidFun_Rigid',
+        n_rollout = 3000,
+        num_workers = 10,
+        verbose_data = False, verbose_model = False,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 3,
+        relation_dim = 1,
+        time_step = 301, time_step_clip = 0,
+        n_instance = 2, n_stages = 4,
+        neighbor_radius = 0.08 / 0.05 * 0.025,
+        root_sib_radius = [0.04 / 0.05 * 0.025, None, ],
+        root_des_radius = [0.08 / 0.05 * 0.025, None, ],
+        root_pstep = [2, [], ],
+        instance = [0, 64, ],
+        root_num = [16, None, ],
+        material = ['rigid', 'fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun_Rigid_weight50')
+    ),
+
+
+    'LiquidFun_Rigid_weight100_train' : Config(
+        weight = 100,
+        env = 'LiquidFun_Rigid',
+        n_rollout = 3000,
+        n_epoch = 10,
+        num_workers = 10,
+        verbose_data = False, verbose_model = False,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 3,
+        relation_dim = 1,
+        time_step = 301, time_step_clip = 0,
+        n_instance = 2, n_stages = 4,
+        neighbor_radius = 0.08 / 0.05 * 0.025,
+        root_sib_radius = [0.04 / 0.05 * 0.025, None, ],
+        root_des_radius = [0.08 / 0.05 * 0.025, None, ],
+        root_pstep = [2, [], ],
+        instance = [0, 64, ],
+        root_num = [16, None, ],
+        material = ['rigid', 'fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun_Rigid_weight100')
+    ),
+    'LiquidFun_Rigid_weight100_eval' : Config(
+        weight = 100,
+        env = 'LiquidFun_Rigid',
+        n_rollout = 3000,
+        num_workers = 10,
+        verbose_data = False, verbose_model = False,
+        state_dim = 4, position_dim = 2,  # [pos(xy) and vel(xy)]
+        attr_dim = 3,
+        relation_dim = 1,
+        time_step = 301, time_step_clip = 0,
+        n_instance = 2, n_stages = 4,
+        neighbor_radius = 0.08 / 0.05 * 0.025,
+        root_sib_radius = [0.04 / 0.05 * 0.025, None, ],
+        root_des_radius = [0.08 / 0.05 * 0.025, None, ],
+        root_pstep = [2, [], ],
+        instance = [0, 64, ],
+        root_num = [16, None, ],
+        material = ['rigid', 'fluid', ],
+        outf = os.path.join('data', 'test_LiquidFun_Rigid_weight100')
+    ),
+
 
     'LiquidFun_vis_eval': Config(
         env='LiquidFun_vis',

@@ -113,7 +113,7 @@ if __name__ == '__main__':
                             node_r_idx, node_s_idx, pstep,
                             instance_idx, config[phase].material, config[phase].verbose_model)
 
-                        loss = criterionMSE(predicted, label)
+                        loss = config[phase].weight * criterionMSE(predicted[:64], label[:64]) + criterionMSE(predicted[64:], label[64:])
                         losses += np.sqrt(loss.item())
 
                         if phase == 'train':
